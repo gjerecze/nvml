@@ -85,7 +85,7 @@ struct pobj_action_internal {
 			uint64_t offset;
 			enum memblock_state new_state;
 			struct memory_block m;
-			int *resvp;
+			struct memory_block_reserved *mresv;
 		};
 
 		/* valid only when type == POBJ_ACTION_TYPE_MEM */
@@ -257,8 +257,8 @@ palloc_reservation_create(struct palloc_heap *heap, size_t size,
 	 * The memory block cannot be put back into the global state unless
 	 * there are no active reservations.
 	 */
-	if ((out->resvp = bucket_current_resvp(b)) != NULL)
-		util_fetch_and_add64(out->resvp, 1);
+	if ((out->mresv = b->active_memory_block) != NULL)
+		util_fetch_and_add64(&out->mresv->nresv, 1);
 
 	out->lock = new_block->m_ops->get_lock(new_block);
 	out->new_state = MEMBLOCK_ALLOCATED;
@@ -346,8 +346,17 @@ palloc_heap_action_on_cancel(struct palloc_heap *heap,
 		palloc_restore_free_chunk_state(heap, &act->m);
 	}
 
-	if (act->resvp)
-		util_fetch_and_sub64(act->resvp, 1);
+	if (act->mresv) {
+		if (util_fetch_and_sub64(&act->mresv->nresv, 1) == 0) {
+			int detached;
+			util_atomic_load_explicit32(&act->mresv->detached,
+				&detached, memory_order_acquire);
+			if (!detached)
+				return;
+			heap_discard_run(heap, &act->mresv->m);
+			Free(act->mresv);
+		}
+	}
 }
 
 /*
@@ -361,8 +370,8 @@ palloc_heap_action_on_process(struct palloc_heap *heap,
 	if (act->new_state == MEMBLOCK_ALLOCATED) {
 		STATS_INC(heap->stats, persistent, heap_curr_allocated,
 			act->m.m_ops->get_real_size(&act->m));
-		if (act->resvp)
-			util_fetch_and_sub64(act->resvp, 1);
+		if (act->mresv)
+			util_fetch_and_sub64(&act->mresv->nresv, 1);
 	} else if (act->new_state == MEMBLOCK_FREE) {
 		if (On_valgrind) {
 			void *ptr = act->m.m_ops->get_user_data(&act->m);
@@ -573,7 +582,7 @@ palloc_defer_free_create(struct palloc_heap *heap, uint64_t off,
 	 * metadata from being modified.
 	 */
 	out->lock = out->m.m_ops->get_lock(&out->m);
-	out->resvp = NULL;
+	out->mresv = NULL;
 	out->new_state = MEMBLOCK_FREE;
 }
 

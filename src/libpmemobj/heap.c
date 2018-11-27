@@ -639,6 +639,20 @@ heap_reuse_from_recycler(struct palloc_heap *heap,
 	return ENOMEM;
 }
 
+void
+heap_discard_run(struct palloc_heap *heap, struct memory_block *m)
+{
+	if (heap_reclaim_run(heap, m)) {
+		struct bucket *defb =
+			heap_bucket_acquire_by_id(heap,
+			DEFAULT_ALLOC_CLASS_ID);
+
+		heap_run_into_free_chunk(heap, defb, m);
+
+		heap_bucket_release(heap, defb);
+	}
+}
+
 /*
  * heap_ensure_run_bucket_filled -- (internal) refills the bucket if needed
  */
@@ -653,21 +667,15 @@ heap_ensure_run_bucket_filled(struct palloc_heap *heap, struct bucket *b,
 	if (b->is_active) {
 		b->c_ops->rm_all(b->container);
 		if (b->active_memory_block->nresv != 0) {
-			struct recycler *r = heap->rt->recyclers[b->aclass->id];
-			recycler_pending_put(r, b->active_memory_block);
+			util_atomic_store_explicit32(
+				&b->active_memory_block->detached, 1,
+				memory_order_release);
+
 			b->active_memory_block =
 				Zalloc(sizeof(struct memory_block_reserved));
 		} else {
 			struct memory_block *m = &b->active_memory_block->m;
-			if (heap_reclaim_run(heap, m)) {
-				struct bucket *defb =
-					heap_bucket_acquire_by_id(heap,
-					DEFAULT_ALLOC_CLASS_ID);
-
-				heap_run_into_free_chunk(heap, defb, m);
-
-				heap_bucket_release(heap, defb);
-			}
+			heap_discard_run(heap, m);
 		}
 		b->is_active = 0;
 	}
