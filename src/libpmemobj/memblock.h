@@ -289,6 +289,7 @@ struct memory_block {
 struct memory_block_reserved {
 	struct memory_block m;
 
+	struct bucket *bucket;
 	int detached;
 	/*
 	 * Number of reservations made from this run, the pointer to this value

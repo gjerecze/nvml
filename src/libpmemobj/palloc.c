@@ -355,6 +355,11 @@ palloc_heap_action_on_cancel(struct palloc_heap *heap,
 				return;
 			heap_discard_run(heap, &act->mresv->m);
 			Free(act->mresv);
+		} else {
+			struct bucket *b = act->mresv->bucket;
+			os_mutex_lock(&b->lock);
+			bucket_insert_block(b, &act->mresv->m);
+			os_mutex_unlock(&b->lock);
 		}
 	}
 }

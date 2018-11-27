@@ -708,6 +708,7 @@ heap_ensure_run_bucket_filled(struct palloc_heap *heap, struct bucket *b,
 
 		b->active_memory_block->m = m;
 		b->is_active = 1;
+		b->active_memory_block->bucket = b;
 
 		heap_bucket_release(heap, defb);
 
