@@ -349,17 +349,17 @@ palloc_heap_action_on_cancel(struct palloc_heap *heap,
 	if (act->mresv) {
 		struct bucket *b = act->mresv->bucket;
 		os_mutex_lock(&b->lock);
-		if (util_fetch_and_sub64(&act->mresv->nresv, 1) == 0) {
-			int detached;
-			util_atomic_load_explicit32(&act->mresv->detached,
-				&detached, memory_order_acquire);
+		int detached;
+		util_atomic_load_explicit32(&act->mresv->detached,
+			&detached, memory_order_acquire);
+		if (util_fetch_and_sub64(&act->mresv->nresv, 1) == 1) {
 			if (!detached) {
 				os_mutex_unlock(&b->lock);
 				return;
 			}
 			heap_discard_run(heap, &act->mresv->m);
 			Free(act->mresv);
-		} else {
+		} else if (!detached) {
 			bucket_insert_block(b, &act->m);
 		}
 		os_mutex_unlock(&b->lock);

@@ -190,6 +190,65 @@ test_many(PMEMobjpool *pop, size_t n)
 	FREE(act);
 }
 
+static void
+test_duplicate(PMEMobjpool *pop)
+{
+
+	struct pobj_alloc_class_desc alloc_class_128;
+	alloc_class_128.header_type = POBJ_HEADER_COMPACT;
+	alloc_class_128.unit_size = 1024 * 100;
+	alloc_class_128.units_per_block = 1;
+	alloc_class_128.alignment = 0;
+
+	int ret = pmemobj_ctl_set(pop, "heap.alloc_class.128.desc",
+		&alloc_class_128);
+	UT_ASSERTeq(ret, 0);
+
+	struct pobj_action a[10];
+	PMEMoid oid[10];
+
+	oid[0] = pmemobj_xreserve(pop, &a[0], 1, 0, POBJ_CLASS_ID(128));
+	UT_ASSERT(!OID_IS_NULL(oid[0]));
+	printf("%lu\n", oid[0].off);
+
+	pmemobj_cancel(pop, a, 1);
+	printf("-------\n");
+
+	oid[0] = pmemobj_xreserve(pop, &a[0], 1, 0, POBJ_CLASS_ID(128));
+	UT_ASSERT(!OID_IS_NULL(oid[0]));
+	printf("%lu\n", oid[0].off);
+
+	oid[0] = pmemobj_xreserve(pop, &a[1], 1, 0, POBJ_CLASS_ID(128));
+	UT_ASSERT(!OID_IS_NULL(oid[0]));
+	printf("%lu\n", oid[0].off);
+
+	oid[0] = pmemobj_xreserve(pop, &a[2], 1, 0, POBJ_CLASS_ID(128));
+	UT_ASSERT(!OID_IS_NULL(oid[0]));
+	printf("%lu\n", oid[0].off);
+
+	pmemobj_cancel(pop, a, 3);
+	printf("-------\n");
+
+	oid[0] = pmemobj_xreserve(pop, &a[0], 1, 0, POBJ_CLASS_ID(128));
+	UT_ASSERT(!OID_IS_NULL(oid[0]));
+	printf("%lu\n", oid[0].off);
+
+	oid[0] = pmemobj_xreserve(pop, &a[1], 1, 0, POBJ_CLASS_ID(128));
+	UT_ASSERT(!OID_IS_NULL(oid[0]));
+	printf("%lu\n", oid[0].off);
+
+	oid[0] = pmemobj_xreserve(pop, &a[2], 1, 0, POBJ_CLASS_ID(128));
+	UT_ASSERT(!OID_IS_NULL(oid[0]));
+	printf("%lu\n", oid[0].off);
+
+	oid[0] = pmemobj_xreserve(pop, &a[3], 1, 0, POBJ_CLASS_ID(128));
+	UT_ASSERT(!OID_IS_NULL(oid[0]));
+	printf("%lu\n", oid[0].off);
+
+	oid[0] = pmemobj_xreserve(pop, &a[4], 1, 0, POBJ_CLASS_ID(128));
+	UT_ASSERT(!OID_IS_NULL(oid[0]));
+	printf("%lu\n", oid[0].off);
+}
 
 static void
 test_many_sets(PMEMobjpool *pop, size_t n)
@@ -322,6 +381,8 @@ main(int argc, char *argv[])
 
 	test_many(pop, POBJ_MAX_ACTIONS * 2);
 	test_many_sets(pop, POBJ_MAX_ACTIONS * 2);
+
+	test_duplicate(pop);
 
 	pmemobj_close(pop);
 
