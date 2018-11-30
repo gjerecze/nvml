@@ -642,14 +642,12 @@ heap_reuse_from_recycler(struct palloc_heap *heap,
 void
 heap_discard_run(struct palloc_heap *heap, struct memory_block *m)
 {
-	printf("discard run %u\n", m->chunk_id);
 	if (heap_reclaim_run(heap, m)) {
 		struct bucket *defb =
 			heap_bucket_acquire_by_id(heap,
 			DEFAULT_ALLOC_CLASS_ID);
 
 		heap_run_into_free_chunk(heap, defb, m);
-		printf("free run %u\n", m->chunk_id);
 
 		heap_bucket_release(heap, defb);
 	}
