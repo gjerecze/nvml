@@ -360,7 +360,7 @@ palloc_heap_action_on_cancel(struct palloc_heap *heap,
 			heap_discard_run(heap, &act->mresv->m);
 			Free(act->mresv);
 		} else {
-			bucket_insert_block(b, &act->mresv->m);
+			bucket_insert_block(b, &act->m);
 		}
 		os_mutex_unlock(&b->lock);
 	}
