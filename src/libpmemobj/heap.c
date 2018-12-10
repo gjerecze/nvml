@@ -363,6 +363,7 @@ heap_run_reuse(struct palloc_heap *heap, struct bucket *b,
 
 	if (ret == 0) {
 		b->active_memory_block->m = *m;
+		b->active_memory_block->bucket = b;
 		b->is_active = 1;
 	} else {
 		b->c_ops->rm_all(b->container);
@@ -673,7 +674,6 @@ heap_ensure_run_bucket_filled(struct palloc_heap *heap, struct bucket *b,
 
 			b->active_memory_block =
 				Zalloc(sizeof(struct memory_block_reserved));
-			b->active_memory_block->bucket = b;
 		} else {
 			struct memory_block *m = &b->active_memory_block->m;
 			heap_discard_run(heap, m);
@@ -709,6 +709,7 @@ heap_ensure_run_bucket_filled(struct palloc_heap *heap, struct bucket *b,
 
 		b->active_memory_block->m = m;
 		b->is_active = 1;
+		b->active_memory_block->bucket = b;
 
 		heap_bucket_release(heap, defb);
 
